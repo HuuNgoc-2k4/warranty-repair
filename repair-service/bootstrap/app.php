@@ -1,6 +1,7 @@
 <?php
 
 use App\Exceptions\BusinessException;
+use App\Exceptions\RemoteUnavailableException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -24,4 +25,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'message' => $e->getMessage(),
             'error_code' => $e->getErrorCode(),
         ], $e->getStatus()));
+        $exceptions->render(fn (RemoteUnavailableException $e) => response()->json([
+            'message' => $e->getMessage(),
+            'error_code' => $e->getErrorCode(),
+        ], 503));
     })->create();
