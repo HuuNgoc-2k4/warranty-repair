@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Chạy các tình huống chính qua API thật (cần ./run-all.sh hoặc docker compose đang chạy và APP_SIMULATE=true ở Inventory).
-# Cảnh báo: xóa sạch dữ liệu Repair và Inventory (migrate:fresh). Đặt SKIP_RESET=1 để bỏ qua (khi chạy trong Docker).
+# Cảnh báo: xóa sạch dữ liệu Repair và Inventory (migrate:fresh). Đặt DOCKER=1 nếu hệ thống đang chạy bằng docker compose, SKIP_RESET=1 để không xóa.
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 RUN=$(date +%s)
 reset_data

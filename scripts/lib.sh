@@ -43,9 +43,15 @@ check() {
   if [ "$2" == "$3" ]; then echo "  PASS  $1"; else echo "  FAIL  $1 (được '$2', cần '$3')"; FAILS=$((FAILS+1)); fi
 }
 
-# Xóa dữ liệu dev của Repair và Inventory (phiếu và lượt giữ phải đi cùng nhau vì ref = T{id})
+# Xóa dữ liệu của Repair và Inventory (phiếu và lượt giữ phải đi cùng nhau vì ref = T{id}).
+# DOCKER=1: chạy lệnh trong container thay vì trên máy.
 reset_data() {
   [ -n "${SKIP_RESET:-}" ] && return
+  if [ -n "${DOCKER:-}" ]; then
+    (cd "$ROOT" && docker compose exec -T inventory-service php artisan migrate:fresh --seed --force >/dev/null \
+      && docker compose exec -T repair-service php artisan migrate:fresh --force >/dev/null)
+    return
+  fi
   (cd "$ROOT/inventory-service" && php artisan migrate:fresh --seed --force >/dev/null)
   (cd "$ROOT/repair-service" && php artisan migrate:fresh --force >/dev/null)
 }

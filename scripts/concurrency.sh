@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # 10 yêu cầu song song tranh 1 linh kiện cuối (Mainboard, còn 1): đúng 1 thành công, kho về 0, không âm.
-# Cảnh báo: xóa sạch dữ liệu Repair và Inventory (migrate:fresh). Đặt SKIP_RESET=1 để bỏ qua.
+# Cảnh báo: xóa sạch dữ liệu Repair và Inventory (migrate:fresh). Đặt DOCKER=1 nếu hệ thống đang chạy bằng docker compose, SKIP_RESET=1 để không xóa.
 source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 RUN=$(date +%s)
 PARALLEL=10
