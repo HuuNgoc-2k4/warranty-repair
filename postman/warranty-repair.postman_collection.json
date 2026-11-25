@@ -1,0 +1,1264 @@
+{
+  "info": {
+    "name": "Warranty Repair",
+    "description": "Chạy tuần tự trong Collection Runner. Cần ./run-all.sh hoặc docker compose đang chạy; Inventory bật APP_SIMULATE=true. Nên reset dữ liệu trước khi chạy (xem README).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "warranty_url",
+      "value": "http://127.0.0.1:8001"
+    },
+    {
+      "key": "repair_url",
+      "value": "http://127.0.0.1:8002"
+    },
+    {
+      "key": "inventory_url",
+      "value": "http://127.0.0.1:8003"
+    },
+    {
+      "key": "service_key",
+      "value": "wr-dev-key"
+    },
+    {
+      "key": "idem_key",
+      "value": ""
+    },
+    {
+      "key": "ticket_id",
+      "value": ""
+    },
+    {
+      "key": "cancel_id",
+      "value": ""
+    },
+    {
+      "key": "ref",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Warranty",
+      "item": [
+        {
+          "name": "Danh sách thiết bị",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Service-Key",
+                "value": "{{service_key}}"
+              }
+            ],
+            "url": "{{warranty_url}}/devices"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Còn bảo hành",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Service-Key",
+                "value": "{{service_key}}"
+              }
+            ],
+            "url": "{{warranty_url}}/warranty/SN-LAP-001"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('data.valid = true', () => pm.expect(String(pm.response.json().data.valid)).to.eql('true'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Hết bảo hành",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Service-Key",
+                "value": "{{service_key}}"
+              }
+            ],
+            "url": "{{warranty_url}}/warranty/SN-TAB-003"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('data.valid = false', () => pm.expect(String(pm.response.json().data.valid)).to.eql('false'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Serial không tồn tại",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Service-Key",
+                "value": "{{service_key}}"
+              }
+            ],
+            "url": "{{warranty_url}}/warranty/NOPE"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 404', () => pm.response.to.have.status(404));",
+                  "pm.test('error_code = device_not_found', () => pm.expect(String(pm.response.json().error_code)).to.eql('device_not_found'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Thiếu service key",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{warranty_url}}/warranty/SN-LAP-001"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Inventory",
+      "item": [
+        {
+          "name": "Danh sách linh kiện",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Service-Key",
+                "value": "{{service_key}}"
+              }
+            ],
+            "url": "{{inventory_url}}/parts"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Giữ linh kiện (mới)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Service-Key",
+                "value": "{{service_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{inventory_url}}/reservations",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ref\": \"{{ref}}\",\n  \"part_id\": 1,\n  \"qty\": 1\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('ref', 'PM-' + Date.now());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201', () => pm.response.to.have.status(201));",
+                  "pm.test('data.status = RESERVED', () => pm.expect(String(pm.response.json().data.status)).to.eql('RESERVED'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Giữ lại cùng ref (idempotent)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Service-Key",
+                "value": "{{service_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{inventory_url}}/reservations",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ref\": \"{{ref}}\",\n  \"part_id\": 1,\n  \"qty\": 1\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Tra lượt giữ",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Service-Key",
+                "value": "{{service_key}}"
+              }
+            ],
+            "url": "{{inventory_url}}/reservations/{{ref}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('data.status = RESERVED', () => pm.expect(String(pm.response.json().data.status)).to.eql('RESERVED'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Dùng linh kiện (consume)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Service-Key",
+                "value": "{{service_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{inventory_url}}/reservations/{{ref}}/consume",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('data.status = CONSUMED', () => pm.expect(String(pm.response.json().data.status)).to.eql('CONSUMED'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Trả linh kiện đã dùng → 409",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Service-Key",
+                "value": "{{service_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{inventory_url}}/reservations/{{ref}}/release",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 409', () => pm.response.to.have.status(409));",
+                  "pm.test('error_code = already_consumed', () => pm.expect(String(pm.response.json().error_code)).to.eql('already_consumed'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Hết hàng (Camera)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Service-Key",
+                "value": "{{service_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{inventory_url}}/reservations",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ref\": \"PM-OOS-{{$timestamp}}\",\n  \"part_id\": 4,\n  \"qty\": 1\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 409', () => pm.response.to.have.status(409));",
+                  "pm.test('error_code = out_of_stock', () => pm.expect(String(pm.response.json().error_code)).to.eql('out_of_stock'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Mô phỏng fail",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Service-Key",
+                "value": "{{service_key}}"
+              },
+              {
+                "key": "X-Simulate",
+                "value": "fail"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{inventory_url}}/reservations",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ref\": \"PM-F-{{$timestamp}}\",\n  \"part_id\": 1,\n  \"qty\": 1\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 503', () => pm.response.to.have.status(503));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Mô phỏng slow (~5 giây)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Service-Key",
+                "value": "{{service_key}}"
+              },
+              {
+                "key": "X-Simulate",
+                "value": "slow"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{inventory_url}}/reservations",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ref\": \"PM-S-{{$timestamp}}\",\n  \"part_id\": 1,\n  \"qty\": 1\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Mô phỏng commit-then-timeout (~10 giây)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Service-Key",
+                "value": "{{service_key}}"
+              },
+              {
+                "key": "X-Simulate",
+                "value": "commit-then-timeout"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{inventory_url}}/reservations",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ref\": \"PM-C-{{$timestamp}}\",\n  \"part_id\": 1,\n  \"qty\": 1\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Repair",
+      "item": [
+        {
+          "name": "1. Tạo phiếu thành công",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Service-Key",
+                "value": "{{service_key}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{idem_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{repair_url}}/tickets",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"serial\": \"SN-LAP-001\",\n  \"customer\": \"Nguyễn Văn A\",\n  \"phone\": \"0901234567\",\n  \"issue\": \"Màn hình bị sọc\",\n  \"part_id\": 1,\n  \"qty\": 1\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('idem_key', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201', () => pm.response.to.have.status(201));",
+                  "pm.test('data.status = RECEIVED', () => pm.expect(String(pm.response.json().data.status)).to.eql('RECEIVED'));",
+                  "pm.collectionVariables.set('ticket_id', pm.response.json().data.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2. Gửi lại cùng Idempotency-Key → cùng phiếu",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Service-Key",
+                "value": "{{service_key}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{idem_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{repair_url}}/tickets",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"serial\": \"SN-LAP-001\",\n  \"customer\": \"Nguyễn Văn A\",\n  \"phone\": \"0901234567\",\n  \"issue\": \"Màn hình bị sọc\",\n  \"part_id\": 1,\n  \"qty\": 1\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('cùng phiếu', () => pm.expect(String(pm.response.json().data.id)).to.eql(pm.collectionVariables.get('ticket_id')));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3. Cùng key khác nội dung → 409",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Service-Key",
+                "value": "{{service_key}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{idem_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{repair_url}}/tickets",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"serial\": \"SN-LAP-001\",\n  \"customer\": \"Nguyễn Văn A\",\n  \"phone\": \"0901234567\",\n  \"issue\": \"Lỗi khác\",\n  \"part_id\": 1,\n  \"qty\": 1\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 409', () => pm.response.to.have.status(409));",
+                  "pm.test('error_code = idempotency_key_conflict', () => pm.expect(String(pm.response.json().error_code)).to.eql('idempotency_key_conflict'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4. Hết bảo hành vẫn nhận phiếu",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Service-Key",
+                "value": "{{service_key}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{repair_url}}/tickets",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"serial\": \"SN-TAB-003\",\n  \"customer\": \"Nguyễn Văn A\",\n  \"phone\": \"0901234567\",\n  \"issue\": \"Màn hình bị sọc\",\n  \"part_id\": 1,\n  \"qty\": 1\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201', () => pm.response.to.have.status(201));",
+                  "pm.test('data.in_warranty = false', () => pm.expect(String(pm.response.json().data.in_warranty)).to.eql('false'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5. Serial lạ → 422",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Service-Key",
+                "value": "{{service_key}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{repair_url}}/tickets",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"serial\": \"NOPE\",\n  \"customer\": \"Nguyễn Văn A\",\n  \"phone\": \"0901234567\",\n  \"issue\": \"Màn hình bị sọc\",\n  \"part_id\": 1,\n  \"qty\": 1\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 422', () => pm.response.to.have.status(422));",
+                  "pm.test('error_code = device_not_found', () => pm.expect(String(pm.response.json().error_code)).to.eql('device_not_found'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "6. Hết hàng → phiếu FAILED",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Service-Key",
+                "value": "{{service_key}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{repair_url}}/tickets",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"serial\": \"SN-LAP-001\",\n  \"customer\": \"Nguyễn Văn A\",\n  \"phone\": \"0901234567\",\n  \"issue\": \"Màn hình bị sọc\",\n  \"part_id\": 4,\n  \"qty\": 1\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 409', () => pm.response.to.have.status(409));",
+                  "pm.test('error_code = out_of_stock', () => pm.expect(String(pm.response.json().error_code)).to.eql('out_of_stock'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7. Thiếu Idempotency-Key → 422",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Service-Key",
+                "value": "{{service_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{repair_url}}/tickets",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"serial\": \"SN-LAP-001\",\n  \"customer\": \"Nguyễn Văn A\",\n  \"phone\": \"0901234567\",\n  \"issue\": \"Màn hình bị sọc\",\n  \"part_id\": 1,\n  \"qty\": 1\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 422', () => pm.response.to.have.status(422));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "8. Danh sách phiếu",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Service-Key",
+                "value": "{{service_key}}"
+              }
+            ],
+            "url": "{{repair_url}}/tickets"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "9. Lọc phiếu FAILED",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Service-Key",
+                "value": "{{service_key}}"
+              }
+            ],
+            "url": "{{repair_url}}/tickets?status=FAILED"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "10. Chi tiết phiếu kèm lịch sử",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Service-Key",
+                "value": "{{service_key}}"
+              }
+            ],
+            "url": "{{repair_url}}/tickets/{{ticket_id}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('có lịch sử', () => pm.expect(pm.response.json().data.events.length).to.be.above(0));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "11. Nhảy cóc trạng thái → 422",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Service-Key",
+                "value": "{{service_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{repair_url}}/tickets/{{ticket_id}}/status",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"DONE\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 422', () => pm.response.to.have.status(422));",
+                  "pm.test('error_code = invalid_transition', () => pm.expect(String(pm.response.json().error_code)).to.eql('invalid_transition'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "12. Bắt đầu sửa (consume linh kiện)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Service-Key",
+                "value": "{{service_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{repair_url}}/tickets/{{ticket_id}}/status",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"REPAIRING\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('data.status = REPAIRING', () => pm.expect(String(pm.response.json().data.status)).to.eql('REPAIRING'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "13. Đang sửa không hủy được → 409",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Service-Key",
+                "value": "{{service_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{repair_url}}/tickets/{{ticket_id}}/cancel",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 409', () => pm.response.to.have.status(409));",
+                  "pm.test('error_code = cancel_not_allowed', () => pm.expect(String(pm.response.json().error_code)).to.eql('cancel_not_allowed'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "14. Sửa xong",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Service-Key",
+                "value": "{{service_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{repair_url}}/tickets/{{ticket_id}}/status",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"DONE\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "15. Trả máy",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Service-Key",
+                "value": "{{service_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{repair_url}}/tickets/{{ticket_id}}/status",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"RETURNED\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('data.status = RETURNED', () => pm.expect(String(pm.response.json().data.status)).to.eql('RETURNED'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "16. Tạo phiếu rồi hủy: trả linh kiện",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Service-Key",
+                "value": "{{service_key}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{repair_url}}/tickets",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"serial\": \"SN-LAP-001\",\n  \"customer\": \"Nguyễn Văn A\",\n  \"phone\": \"0901234567\",\n  \"issue\": \"Màn hình bị sọc\",\n  \"part_id\": 2,\n  \"qty\": 1\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('cancel_id', pm.response.json().data.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "17. Hủy phiếu",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Service-Key",
+                "value": "{{service_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{repair_url}}/tickets/{{cancel_id}}/cancel",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('data.status = CANCELLED', () => pm.expect(String(pm.response.json().data.status)).to.eql('CANCELLED'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "18. Hủy lại → vẫn 200, không trả kho lần hai",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Service-Key",
+                "value": "{{service_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{repair_url}}/tickets/{{cancel_id}}/cancel",
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "19. Inventory ghi xong rồi timeout → vẫn RECEIVED nhờ tra cứu (~4 giây)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Service-Key",
+                "value": "{{service_key}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}"
+              },
+              {
+                "key": "X-Simulate",
+                "value": "commit-then-timeout"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{repair_url}}/tickets",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"serial\": \"SN-LAP-001\",\n  \"customer\": \"Nguyễn Văn A\",\n  \"phone\": \"0901234567\",\n  \"issue\": \"Màn hình bị sọc\",\n  \"part_id\": 2,\n  \"qty\": 1\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201', () => pm.response.to.have.status(201));",
+                  "pm.test('data.status = RECEIVED', () => pm.expect(String(pm.response.json().data.status)).to.eql('RECEIVED'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "20. Inventory chậm → vẫn RECEIVED, chỉ giữ kho một lần (~7 giây)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Service-Key",
+                "value": "{{service_key}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}"
+              },
+              {
+                "key": "X-Simulate",
+                "value": "slow"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{repair_url}}/tickets",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"serial\": \"SN-LAP-001\",\n  \"customer\": \"Nguyễn Văn A\",\n  \"phone\": \"0901234567\",\n  \"issue\": \"Màn hình bị sọc\",\n  \"part_id\": 2,\n  \"qty\": 1\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201', () => pm.response.to.have.status(201));",
+                  "pm.test('data.status = RECEIVED', () => pm.expect(String(pm.response.json().data.status)).to.eql('RECEIVED'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "21. Inventory lỗi hẳn → phiếu FAILED, kho không đổi",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Service-Key",
+                "value": "{{service_key}}"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{$guid}}"
+              },
+              {
+                "key": "X-Simulate",
+                "value": "fail"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{repair_url}}/tickets",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"serial\": \"SN-LAP-001\",\n  \"customer\": \"Nguyễn Văn A\",\n  \"phone\": \"0901234567\",\n  \"issue\": \"Màn hình bị sọc\",\n  \"part_id\": 2,\n  \"qty\": 1\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 503', () => pm.response.to.have.status(503));",
+                  "pm.test('error_code = inventory_unavailable', () => pm.expect(String(pm.response.json().error_code)).to.eql('inventory_unavailable'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "22. Đối soát phiếu PENDING",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "X-Service-Key",
+                "value": "{{service_key}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{repair_url}}/tickets/reconcile",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"older_than\": 0\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -43,6 +43,7 @@ services:
       <<: *env
       PORT: "8000"
       DB_DATABASE: wr_gateway
+      SEED: "1"
       WARRANTY_URL: http://warranty-service:8001
       REPAIR_URL: http://repair-service:8002
       INVENTORY_URL: http://inventory-service:8003
@@ -55,6 +56,7 @@ services:
       <<: *env
       PORT: "8001"
       DB_DATABASE: wr_warranty
+      SEED: "1"
 
   repair-service:
     <<: *php
