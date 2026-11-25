@@ -56,7 +56,13 @@ Cần Docker và Docker Compose.
 docker compose up --build
 ```
 
-Lần đầu mỗi container tự tạo `.env`, cài `vendor`, chạy migrate và seed. Mở http://localhost:8000. MySQL chỉ nằm trong mạng Docker. Dừng và xóa dữ liệu: `docker compose down -v`.
+Mô hình nginx + php-fpm: mỗi app một container php-fpm (`*-app`), một nginx chung (`web`) mở các cổng 8000–8003. Lần đầu mỗi container tự tạo `.env`, cài `vendor`, chạy migrate và seed. Mở http://localhost:8000. MySQL chỉ nằm trong mạng Docker. Dừng và xóa dữ liệu: `docker compose down -v`.
+
+Công khai ra Internet bằng Cloudflare Tunnel: chỉ trỏ tunnel vào cổng 8000 (gateway), không mở 8001–8003.
+
+```bash
+cloudflared tunnel --url http://localhost:8000
+```
 
 ### Máy cá nhân
 
@@ -150,7 +156,7 @@ Kịch bản chạy trên hệ thống thật (cần hệ thống đang chạy v
 
 ```
 gateway/  warranty-service/  repair-service/  inventory-service/   # 4 app Laravel
-docker/                  # Dockerfile, entrypoint, init.sql của MySQL
+docker/                  # Dockerfile php-fpm, cấu hình nginx, entrypoint, init.sql của MySQL
 docker-compose.yml       # chạy toàn bộ hệ thống
 run-all.sh               # chạy 4 app trên máy cá nhân
 scripts/                 # kịch bản e2e và đồng thời

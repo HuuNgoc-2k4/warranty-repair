@@ -1,4 +1,6 @@
 # Chạy: docker compose up --build   (gateway http://localhost:8000)
+# Mô hình giống các dự án nginx + php-fpm: mỗi app một container php-fpm (*-app), một nginx chung (web) mở cổng 8000-8003.
+# Các dịch vụ gọi nhau qua nginx nhờ alias mạng (warranty-service, repair-service, inventory-service).
 # Biến trong environment ghi đè .env của từng app, nên .env local (127.0.0.1) không ảnh hưởng container.
 # Dùng chung một image PHP; mã nguồn mỗi app được mount vào /app.
 
@@ -14,7 +16,6 @@ x-php: &php
 
 x-env: &env
   HOME: /tmp
-  PHP_CLI_SERVER_WORKERS: "8"
   DB_HOST: mysql
   DB_PORT: "3306"
   DB_USERNAME: wr
@@ -35,47 +36,54 @@ services:
       timeout: 5s
       retries: 20
 
-  gateway:
+  web:
+    image: nginx:alpine
+    ports: ["8000:8000", "8001:8001", "8002:8002", "8003:8003"]
+    volumes:
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./docker/nginx/snippet.conf:/etc/nginx/snippet.conf:ro
+      - ./gateway:/srv/gateway:ro
+      - ./warranty-service:/srv/warranty-service:ro
+      - ./repair-service:/srv/repair-service:ro
+      - ./inventory-service:/srv/inventory-service:ro
+    networks:
+      default:
+        aliases: [warranty-service, repair-service, inventory-service]
+    depends_on: [gateway-app, warranty-app, repair-app, inventory-app]
+
+  gateway-app:
     <<: *php
-    ports: ["8000:8000"]
     volumes: ["./gateway:/app"]
     environment:
       <<: *env
-      PORT: "8000"
       DB_DATABASE: wr_gateway
       SEED: "1"
       WARRANTY_URL: http://warranty-service:8001
       REPAIR_URL: http://repair-service:8002
       INVENTORY_URL: http://inventory-service:8003
 
-  warranty-service:
+  warranty-app:
     <<: *php
-    ports: ["8001:8001"]
     volumes: ["./warranty-service:/app"]
     environment:
       <<: *env
-      PORT: "8001"
       DB_DATABASE: wr_warranty
       SEED: "1"
 
-  repair-service:
+  repair-app:
     <<: *php
-    ports: ["8002:8002"]
     volumes: ["./repair-service:/app"]
     environment:
       <<: *env
-      PORT: "8002"
       DB_DATABASE: wr_repair
       WARRANTY_URL: http://warranty-service:8001
       INVENTORY_URL: http://inventory-service:8003
 
-  inventory-service:
+  inventory-app:
     <<: *php
-    ports: ["8003:8003"]
     volumes: ["./inventory-service:/app"]
     environment:
       <<: *env
-      PORT: "8003"
       DB_DATABASE: wr_inventory
       APP_SIMULATE: "true"
       SEED: "1"

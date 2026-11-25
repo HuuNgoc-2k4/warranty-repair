@@ -1,5 +1,5 @@
 #!/bin/sh
-# Khởi động một dịch vụ Laravel: chuẩn bị .env, vendor, migrate (+ seed nếu SEED=1), rồi serve.
+# Khởi động một dịch vụ Laravel: chuẩn bị .env, vendor, migrate (+ seed nếu SEED=1), rồi chạy php-fpm (nginx đứng trước).
 set -e
 cd /app
 
@@ -12,6 +12,4 @@ fi
 php artisan migrate --force
 [ -z "$SEED" ] || php artisan db:seed --force
 
-# Không dùng `artisan serve`: nó không truyền env của container (DB_HOST, URL dịch vụ) xuống tiến trình con
-cd public
-exec php -S "0.0.0.0:$PORT" /app/vendor/laravel/framework/src/Illuminate/Foundation/resources/server.php
+exec php-fpm

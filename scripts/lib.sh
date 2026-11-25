@@ -48,8 +48,8 @@ check() {
 reset_data() {
   [ -n "${SKIP_RESET:-}" ] && return
   if [ -n "${DOCKER:-}" ]; then
-    (cd "$ROOT" && docker compose exec -T inventory-service php artisan migrate:fresh --seed --force >/dev/null \
-      && docker compose exec -T repair-service php artisan migrate:fresh --force >/dev/null)
+    (cd "$ROOT" && docker compose exec -T inventory-app php artisan migrate:fresh --seed --force >/dev/null \
+      && docker compose exec -T repair-app php artisan migrate:fresh --force >/dev/null)
     return
   fi
   (cd "$ROOT/inventory-service" && php artisan migrate:fresh --seed --force >/dev/null)
