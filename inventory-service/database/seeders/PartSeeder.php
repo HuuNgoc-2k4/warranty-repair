@@ -9,6 +9,7 @@ class PartSeeder extends Seeder
 {
     /**
      * Linh kiện mẫu; "Mainboard" chỉ còn 1 để thử tranh chấp linh kiện cuối.
+     * Chỉ thêm linh kiện còn thiếu, không ghi đè tồn kho đang có (seed lại khi khởi động lại không làm lệch kho so với các lượt giữ).
      *
      * @return void
      */
@@ -20,7 +21,7 @@ class PartSeeder extends Seeder
             ['name' => 'Mainboard', 'available' => 1],
             ['name' => 'Camera', 'available' => 0],
         ] as $part) {
-            Part::query()->updateOrCreate(['name' => $part['name']], ['available' => $part['available']]);
+            Part::query()->firstOrCreate(['name' => $part['name']], ['available' => $part['available']]);
         }
     }
 }
