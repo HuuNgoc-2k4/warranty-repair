@@ -134,9 +134,9 @@ class TicketService
                 throw new BusinessException("Không thể chuyển phiếu từ {$ticket->status} sang {$to}.", 'invalid_transition', 422);
             }
 
-            // consume idempotent; lỗi/timeout làm rollback, phiếu giữ nguyên và client gửi lại an toàn
+            // Lỗi chắc chắn làm rollback, phiếu giữ nguyên; consume idempotent nên client gửi lại an toàn
             if ($to === TicketStatus::REPAIRING->value) {
-                $this->inventory->consume($this->refOf($ticket), $simulate);
+                $this->consumeParts($ticket, $simulate);
             }
 
             return $this->move($ticket, $to);
@@ -284,6 +284,29 @@ class TicketService
         } catch (RemoteUnavailableException $e) {
             $reservation = $this->findReservation($ref);
             if (($reservation['status'] ?? null) !== 'RELEASED') {
+                throw $e;
+            }
+        }
+    }
+
+    /**
+     * Xác nhận dùng linh kiện; timeout thì tra lượt giữ: nếu thực ra đã CONSUMED thì coi như thành công,
+     * nếu không thì để phiếu giữ nguyên (không đi tiếp khi chưa chắc kho đã ghi nhận).
+     *
+     * @param Ticket $ticket
+     * @param string|null $simulate
+     * @return void
+     * @throws BusinessException
+     * @throws RemoteUnavailableException
+     */
+    protected function consumeParts(Ticket $ticket, ?string $simulate): void
+    {
+        $ref = $this->refOf($ticket);
+        try {
+            $this->inventory->consume($ref, $simulate);
+        } catch (RemoteUnavailableException $e) {
+            $reservation = $this->findReservation($ref);
+            if (($reservation['status'] ?? null) !== 'CONSUMED') {
                 throw $e;
             }
         }

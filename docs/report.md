@@ -174,7 +174,7 @@ Phân biệt hai loại kết quả khi gọi dịch vụ khác:
 
 - Tạo phiếu: quy trình ở mục 5.3. Phiếu `PENDING` quá 60 giây được đối soát bằng `php artisan tickets:reconcile` hoặc `POST /tickets/reconcile`.
 - Hủy phiếu: nếu `release` bị timeout thì tra lượt giữ; đã `RELEASED` thì coi như hủy thành công, chưa rõ thì trả 503 và giữ phiếu nguyên để thử lại.
-- Bắt đầu sửa: `consume` lỗi thì phiếu giữ `RECEIVED`, gửi lại an toàn vì `consume` idempotent.
+- Bắt đầu sửa: `consume` timeout thì tra lượt giữ; đã `CONSUMED` thì phiếu sang `REPAIRING`, chưa rõ thì trả 503 và giữ `RECEIVED`, gửi lại an toàn vì `consume` idempotent.
 - Warranty chỉ đọc nên lỗi ở bước này không lưu gì, client gửi lại bình thường.
 
 ### 6.4 Hủy và đổi
@@ -189,7 +189,7 @@ Lệnh chạy và cách tái hiện nằm ở `README.md`. Kết quả của l�
 |---|---|---|
 | PHPUnit `warranty-service` | tra cứu, hết hạn, đúng ngày hết hạn, serial lạ, sai key | 6 test đạt |
 | PHPUnit `inventory-service` | giữ/trả/dùng, idempotent theo ref, hết hàng, simulate fail | 13 test đạt |
-| PHPUnit `repair-service` | tạo phiếu, idempotency, timeout trước/sau khi ghi, lỗi liên tục, PENDING, đối soát, vòng đời, hủy | 31 test đạt |
+| PHPUnit `repair-service` | tạo phiếu, idempotency, timeout trước/sau khi ghi, lỗi liên tục, PENDING, đối soát, vòng đời, hủy | 33 test đạt |
 | PHPUnit `gateway` | chặn khách chưa đăng nhập, đăng nhập, form, chuyển `Idempotency-Key`/`X-Simulate`, xử lý lỗi dịch vụ | 17 test đạt |
 | `scripts/e2e.sh` (curl, dịch vụ thật, MySQL) | 12 nhóm tình huống gồm simulate `fail`/`slow`/`commit-then-timeout` và đăng nhập qua gateway | tất cả đạt, trên máy và trong Docker |
 | `scripts/concurrency.sh` | 10 yêu cầu song song vào linh kiện còn 1; cùng `ref`; cùng `Idempotency-Key` | đúng 1 thành công, kho = 0, một phiếu |

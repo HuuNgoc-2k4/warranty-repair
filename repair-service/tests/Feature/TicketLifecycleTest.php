@@ -81,6 +81,39 @@ class TicketLifecycleTest extends TestCase
     }
 
     /**
+     * Consume đã ghi nhưng phản hồi timeout: tra lượt giữ thấy CONSUMED → phiếu sang REPAIRING, không bị kẹt ở RECEIVED.
+     */
+    public function test_consume_timeout_after_commit_is_resolved_by_lookup(): void
+    {
+        $inventory = $this->fakeServices();
+        $ticket = $this->makeTicket('RECEIVED');
+        $inventory->queues['consume'] = ['commit_timeout'];
+
+        $this->setStatus($ticket->id, 'REPAIRING')->assertOk()->assertJsonPath('data.status', 'REPAIRING');
+
+        $this->assertSame(1, $inventory->countCalls("POST /reservations/T{$ticket->id}/consume"));
+        $this->assertSame('CONSUMED', $inventory->reservations["T{$ticket->id}"]);
+    }
+
+    /**
+     * Consume timeout và không tra được: không đoán, phiếu giữ RECEIVED; gửi lại sau khi kho hoạt động thì thành công.
+     */
+    public function test_consume_unknown_state_keeps_ticket_and_retry_succeeds(): void
+    {
+        $inventory = $this->fakeServices();
+        $ticket = $this->makeTicket('RECEIVED');
+        $inventory->queues['consume'] = ['commit_timeout'];
+        $inventory->lookupDown = true;
+
+        $this->setStatus($ticket->id, 'REPAIRING')->assertStatus(503);
+        $this->assertSame('RECEIVED', $ticket->fresh()->status);
+
+        $inventory->lookupDown = false;
+        $this->setStatus($ticket->id, 'REPAIRING')->assertOk();
+        $this->assertSame('REPAIRING', $ticket->fresh()->status);
+    }
+
+    /**
      * Hủy phiếu trả linh kiện và chuyển CANCELLED.
      */
     public function test_cancel_releases_part(): void
