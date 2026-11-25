@@ -70,15 +70,15 @@ echo "11. Đối soát"
 call POST "$REPAIR/tickets/reconcile" '{"older_than":0}'; check "200" "$CODE" 200
 check "không còn PENDING" "$(jget data.pending)" 0
 
-echo "12. Gateway: đăng nhập session và đi qua giao diện (không dùng trình duyệt)"
+echo "12. Gateway: đăng nhập session, phân quyền theo vai trò và đi qua giao diện (không dùng trình duyệt)"
 GATEWAY="${GATEWAY_URL:-http://127.0.0.1:8000}"
 JAR=$(mktemp)
 trap 'rm -f "$JAR"' EXIT
 token() { curl -s -b "$JAR" -c "$JAR" "$GATEWAY$1" | sed -n 's/.*name="_token" value="\([^"]*\)".*/\1/p' | head -1; }
 status_of() { curl -s -o /dev/null -w '%{http_code}' -b "$JAR" -c "$JAR" "$@"; }
 check "chưa đăng nhập bị chuyển hướng" "$(status_of "$GATEWAY/tickets")" 302
-check "sai mật khẩu bị từ chối" "$(curl -s -o /dev/null -w '%{redirect_url}' -b "$JAR" -c "$JAR" -d "_token=$(token /login)" -d 'email=staff1@wr.test' -d 'password=sai' "$GATEWAY/login")" "$GATEWAY/login"
-check "đăng nhập đúng" "$(curl -s -o /dev/null -w '%{redirect_url}' -b "$JAR" -c "$JAR" -d "_token=$(token /login)" -d 'email=staff1@wr.test' -d 'password=password' "$GATEWAY/login")" "$GATEWAY/tickets"
+check "sai mật khẩu bị từ chối" "$(curl -s -o /dev/null -w '%{redirect_url}' -b "$JAR" -c "$JAR" -d "_token=$(token /login)" -d 'email=staff1@gmail.com' -d 'password=sai' "$GATEWAY/login")" "$GATEWAY/login"
+check "đăng nhập đúng" "$(curl -s -o /dev/null -w '%{redirect_url}' -b "$JAR" -c "$JAR" -d "_token=$(token /login)" -d 'email=staff1@gmail.com' -d 'password=password' "$GATEWAY/login")" "$GATEWAY/tickets"
 check "danh sách phiếu 200" "$(status_of "$GATEWAY/tickets")" 200
 check "trang kho 200" "$(status_of "$GATEWAY/inventory")" 200
 CREATE_TOKEN=$(token /tickets/create)
@@ -89,5 +89,25 @@ check "tạo phiếu qua UI chuyển tới trang chi tiết" "$(echo "$LOCATION"
 LOCATION2=$(curl -s -o /dev/null -w '%{redirect_url}' -b "$JAR" -c "$JAR" "${SUBMIT[@]}" "$GATEWAY/tickets")
 check "gửi lại form (cùng key) về cùng phiếu" "$LOCATION2" "$LOCATION"
 check "trang chi tiết 200" "$(status_of "$LOCATION")" 200
+
+# Phân quyền: mỗi vai trò dùng một phiên đăng nhập riêng
+login_as() {
+  local jar=$1 email=$2 tk
+  tk=$(curl -s -b "$jar" -c "$jar" "$GATEWAY/login" | sed -n 's/.*name="_token" value="\([^"]*\)".*/\1/p' | head -1)
+  curl -s -o /dev/null -b "$jar" -c "$jar" -d "_token=$tk" -d "email=$email" -d 'password=password' "$GATEWAY/login"
+}
+code_with() { local jar=$1; shift; curl -s -o /dev/null -w '%{http_code}' -b "$jar" -c "$jar" "$@"; }
+csrf_of() { curl -s -b "$1" -c "$1" "$GATEWAY$2" | sed -n 's/.*name="_token" value="\([^"]*\)".*/\1/p' | head -1; }
+TECH_JAR=$(mktemp); ADMIN_JAR=$(mktemp)
+trap 'rm -f "$JAR" "$TECH_JAR" "$ADMIN_JAR"' EXIT
+login_as "$TECH_JAR" technician1@gmail.com
+login_as "$ADMIN_JAR" admin@gmail.com
+check "kỹ thuật viên xem danh sách 200" "$(code_with "$TECH_JAR" "$GATEWAY/tickets")" 200
+check "kỹ thuật viên không tạo phiếu (403)" "$(code_with "$TECH_JAR" "$GATEWAY/tickets/create")" 403
+check "kỹ thuật viên không hủy phiếu (403)" "$(code_with "$TECH_JAR" -d "_token=$(csrf_of "$TECH_JAR" /tickets)" "$GATEWAY/tickets/$T1/cancel")" 403
+check "nhân viên tiếp nhận không đối soát (403)" "$(code_with "$JAR" -d "_token=$(csrf_of "$JAR" /tickets)" "$GATEWAY/tickets/reconcile")" 403
+check "nhân viên tiếp nhận không đổi trạng thái (403)" "$(code_with "$JAR" -d "_token=$(csrf_of "$JAR" /tickets)" -d status=DONE "$GATEWAY/tickets/$T1/status")" 403
+check "quản trị viên tạo phiếu được (200)" "$(code_with "$ADMIN_JAR" "$GATEWAY/tickets/create")" 200
+check "quản trị viên đối soát được" "$(code_with "$ADMIN_JAR" -d "_token=$(csrf_of "$ADMIN_JAR" /tickets)" "$GATEWAY/tickets/reconcile")" 302
 
 finish

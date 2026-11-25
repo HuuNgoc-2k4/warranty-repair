@@ -11,7 +11,7 @@ Hệ thống cho nhân viên cửa hàng tiếp nhận thiết bị đến bảo
 | Một quy trình phối hợp cả 3 dịch vụ | Tạo phiếu: Warranty → Repair → Inventory (mục 5.1) |
 | Một dịch vụ dùng ở ≥ 2 quy trình | Inventory dùng ở tạo phiếu (giữ), hủy phiếu (trả) và bắt đầu sửa (dùng) |
 | Giao diện đủ cho luồng chính | Gateway: đăng nhập, danh sách, tạo phiếu, chi tiết, đổi trạng thái, hủy, kho (giao diện tạm) |
-| Đăng nhập xử lý hợp lý, không tính là dịch vụ nghiệp vụ | Gateway đăng nhập session; dịch vụ con chỉ nhận request có `X-Service-Key` |
+| Đăng nhập xử lý hợp lý, không tính là dịch vụ nghiệp vụ | Gateway đăng nhập session và phân quyền theo vai trò (mục 6.5); dịch vụ con chỉ nhận request có `X-Service-Key` |
 | Giả lập dịch vụ ngoài với trạng thái thành công/lỗi/chậm | Inventory nhận `X-Simulate: fail | slow | commit-then-timeout` khi `APP_SIMULATE=true` |
 | Xử lý ≥ 2 vấn đề đặc thù | Cả bốn: đồng thời, yêu cầu lặp, lỗi giữa quy trình (bù trừ), hủy/đổi (mục 6) |
 | Chậm không phải lỗi: tra trạng thái trước khi gửi lại/hủy/bù trừ | Mục 6.3 |
@@ -48,7 +48,7 @@ flowchart LR
 | Repair | `ticket_events` | `ticket_id`, `from_status`, `to_status`, `note` (lịch sử đổi trạng thái) |
 | Inventory | `parts` | `name`, `available` |
 | Inventory | `reservations` | `ref` UNIQUE, `part_id`, `qty`, `status` (RESERVED / RELEASED / CONSUMED) |
-| Gateway | `users` | tài khoản nhân viên |
+| Gateway | `users` | tài khoản nhân viên, cột `role` (`ADMIN` / `STAFF` / `TECHNICIAN`) |
 
 Vòng đời phiếu:
 
@@ -181,6 +181,18 @@ Phân biệt hai loại kết quả khi gọi dịch vụ khác:
 
 Chỉ hủy được phiếu `RECEIVED` (trả linh kiện). Phiếu `PENDING` trả 409 `ticket_pending`; phiếu đang sửa, đã xong hoặc đã trả trả 409 `cancel_not_allowed` vì linh kiện đã dùng. Hủy lặp trả 200 và không cộng kho lần hai. Đổi trạng thái chỉ theo thứ tự `RECEIVED → REPAIRING → DONE → RETURNED`.
 
+### 6.5 Phân quyền
+
+Gateway là nơi duy nhất biết người dùng; quyền được kiểm bằng Laravel Gate theo vai trò và áp vào route (`can:`), đồng thời ẩn nút trên giao diện. Thao tác trái quyền trả 403, không có request nào đi tiếp tới dịch vụ phía sau. Vai trò không hợp lệ trong CSDL không có quyền nào.
+
+| Thao tác | `ADMIN` | `STAFF` | `TECHNICIAN` |
+|---|---|---|---|
+| Xem phiếu, chi tiết, kho | Có | Có | Có |
+| Tạo phiếu | Có | Có | Không |
+| Hủy phiếu | Có | Có | Không |
+| Đổi trạng thái sửa chữa | Có | Không | Có |
+| Đối soát phiếu chờ | Có | Không | Không |
+
 ## 7. Kiểm thử
 
 Lệnh chạy và cách tái hiện nằm ở `README.md`. Kết quả của lần chạy cuối:
@@ -190,8 +202,8 @@ Lệnh chạy và cách tái hiện nằm ở `README.md`. Kết quả của l�
 | PHPUnit `warranty-service` | tra cứu, hết hạn, đúng ngày hết hạn, serial lạ, sai key | 6 test đạt |
 | PHPUnit `inventory-service` | giữ/trả/dùng, idempotent theo ref, hết hàng, simulate fail | 13 test đạt |
 | PHPUnit `repair-service` | tạo phiếu, idempotency, timeout trước/sau khi ghi, lỗi liên tục, PENDING, đối soát, vòng đời, hủy | 33 test đạt |
-| PHPUnit `gateway` | chặn khách chưa đăng nhập, đăng nhập, form, chuyển `Idempotency-Key`/`X-Simulate`, xử lý lỗi dịch vụ | 17 test đạt |
-| `scripts/e2e.sh` (curl, dịch vụ thật, MySQL) | 12 nhóm tình huống gồm simulate `fail`/`slow`/`commit-then-timeout` và đăng nhập qua gateway | tất cả đạt, trên máy và trong Docker |
+| PHPUnit `gateway` | chặn khách chưa đăng nhập, đăng nhập, form, chuyển `Idempotency-Key`/`X-Simulate`, xử lý lỗi dịch vụ, phân quyền theo vai trò | 25 test đạt |
+| `scripts/e2e.sh` (curl, dịch vụ thật, MySQL) | 12 nhóm tình huống gồm simulate `fail`/`slow`/`commit-then-timeout`, đăng nhập và phân quyền qua gateway | tất cả đạt, trên máy và trong Docker |
 | `scripts/concurrency.sh` | 10 yêu cầu song song vào linh kiện còn 1; cùng `ref`; cùng `Idempotency-Key` | đúng 1 thành công, kho = 0, một phiếu |
 | `postman/*.json` | 37 request có script kiểm tra; chạy bằng Collection Runner | chưa chạy thử trong Postman |
 
@@ -208,7 +220,7 @@ Ghi chú: test PHPUnit chạy trên SQLite in-memory nên không kiểm khóa d�
 
 Hạn chế đã biết:
 
-- Chỉ có một vai trò nhân viên.
+- Phân quyền chỉ kiểm ở Gateway; dịch vụ con không biết người dùng và lịch sử phiếu không ghi nhân viên nào đã thao tác.
 - Đối soát phải chạy tay (không có lịch tự động). Nút đối soát trên giao diện luôn dùng `older_than=0` nên bỏ qua ngưỡng 60 giây vốn để tránh đụng phiếu đang được xử lý; chỉ nên bấm khi đã chắc không có yêu cầu tạo phiếu nào đang chạy.
 - Khóa dòng phiếu giữ trong lúc gọi Inventory nên mỗi phiếu chỉ xử lý được một thao tác tại một thời điểm.
 - Seed Inventory chỉ thêm linh kiện còn thiếu (không ghi đè tồn kho). Seed Warranty tính lại ngày mua theo ngày chạy, nên tình trạng còn/hết hạn của thiết bị mẫu có thể đổi sau khi seed lại.

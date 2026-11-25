@@ -32,6 +32,19 @@ Nguyên tắc chính:
 - Vòng đời phiếu: `RECEIVED → REPAIRING → DONE → RETURNED`; hủy phiếu (chỉ khi mới tiếp nhận) trả linh kiện về kho.
 - Chống gửi trùng, xử lý timeout/trạng thái chưa rõ, đối soát phiếu `PENDING`.
 - Giao diện tạm cho nhân viên: đăng nhập, danh sách, tạo phiếu, chi tiết và thao tác, tồn kho.
+- Phân quyền theo vai trò ở Gateway (xem bảng dưới).
+
+## Phân quyền
+
+Phân quyền kiểm ở Gateway (route `can:` và ẩn nút trên giao diện); thao tác trái quyền trả 403 và không gọi sang dịch vụ phía sau. Các dịch vụ con vẫn chỉ xác thực bằng `X-Service-Key`, không biết người dùng là ai.
+
+| Thao tác | `ADMIN` | `STAFF` (tiếp nhận) | `TECHNICIAN` (kỹ thuật) |
+|---|---|---|---|
+| Xem phiếu, chi tiết, kho | Có | Có | Có |
+| Tạo phiếu | Có | Có | Không |
+| Hủy phiếu | Có | Có | Không |
+| Đổi trạng thái sửa chữa | Có | Không | Có |
+| Đối soát phiếu chờ | Có | Không | Không |
 
 ## Chạy hệ thống
 
@@ -59,7 +72,7 @@ Cần PHP 8.4, Composer, MySQL 8.
    php artisan migrate
    ```
 
-3. Seed dữ liệu mẫu cho `gateway`, `warranty-service`, `inventory-service`:
+3. Seed dữ liệu mẫu cho `gateway`, `warranty-service`, `inventory-service` (DB gateway đã có tài khoản cũ thì chạy `php artisan migrate:fresh --seed` ở `gateway` để dùng các tài khoản mới):
 
    ```bash
    php artisan db:seed
@@ -76,7 +89,7 @@ Cần PHP 8.4, Composer, MySQL 8.
 
 | Thành phần | Dữ liệu |
 |---|---|
-| Nhân viên (gateway) | `staff1@wr.test` / `password`, `staff2@wr.test` / `password` |
+| Tài khoản (gateway), mật khẩu đều là `password` | `admin@gmail.com` (quản trị), `staff1@gmail.com` và `staff2@gmail.com` (tiếp nhận), `technician1@gmail.com` (kỹ thuật) |
 | Thiết bị (warranty) | `SN-LAP-001` còn hạn, `SN-PHN-002` còn hạn, `SN-TAB-003` hết hạn, `SN-LAP-004` hết hạn, `SN-TV-005` còn hạn |
 | Linh kiện (inventory) | 1 Màn hình (10), 2 Pin (5), 3 Mainboard (1), 4 Camera (0) |
 
@@ -129,7 +142,7 @@ cd repair-service && php artisan test --compact
 Kịch bản chạy trên hệ thống thật (cần hệ thống đang chạy và Inventory bật `APP_SIMULATE=true`). Hai script này xóa sạch dữ liệu Repair và Inventory (`migrate:fresh`); thêm `DOCKER=1` nếu hệ thống chạy bằng Docker:
 
 ```bash
-./scripts/e2e.sh          # 12 nhóm tình huống, gồm mô phỏng lỗi và đăng nhập qua gateway
+./scripts/e2e.sh          # 12 nhóm tình huống, gồm mô phỏng lỗi, đăng nhập và phân quyền qua gateway
 ./scripts/concurrency.sh  # 10 yêu cầu song song tranh linh kiện cuối
 ```
 
