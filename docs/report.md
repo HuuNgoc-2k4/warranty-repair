@@ -206,4 +206,9 @@ Ghi chú: test PHPUnit chạy trên SQLite in-memory nên không kiểm khóa d�
 | Gateway (đăng nhập, giao diện tạm) | Nhóm 1 người | Hoàn thành giao diện tạm, sẽ làm đẹp sau |
 | Kiểm thử, Postman, báo cáo | Nhóm 1 người | Hoàn thành, Postman chưa chạy thử |
 
-Hạn chế đã biết: chỉ có một vai trò nhân viên; đối soát phải chạy tay (không có lịch tự động); khóa dòng phiếu giữ trong lúc gọi Inventory nên mỗi phiếu chỉ xử lý được một thao tác tại một thời điểm.
+Hạn chế đã biết:
+
+- Chỉ có một vai trò nhân viên.
+- Đối soát phải chạy tay (không có lịch tự động). Nút đối soát trên giao diện luôn dùng `older_than=0` nên bỏ qua ngưỡng 60 giây vốn để tránh đụng phiếu đang được xử lý; chỉ nên bấm khi đã chắc không có yêu cầu tạo phiếu nào đang chạy.
+- Khóa dòng phiếu giữ trong lúc gọi Inventory nên mỗi phiếu chỉ xử lý được một thao tác tại một thời điểm.
+- Seed Inventory chỉ thêm linh kiện còn thiếu (không ghi đè tồn kho). Seed Warranty tính lại ngày mua theo ngày chạy, nên tình trạng còn/hết hạn của thiết bị mẫu có thể đổi sau khi seed lại.
