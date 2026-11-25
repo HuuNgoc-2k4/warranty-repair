@@ -58,4 +58,13 @@ class ReservationController extends Controller
     {
         return response()->json(['data' => $this->inventoryService->release($ref)]);
     }
+
+    /**
+     * @param string $ref
+     * @return JsonResponse
+     */
+    public function consume(string $ref): JsonResponse
+    {
+        return response()->json(['data' => $this->inventoryService->consume($ref)]);
+    }
 }

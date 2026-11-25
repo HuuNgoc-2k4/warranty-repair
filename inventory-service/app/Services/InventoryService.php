@@ -98,6 +98,33 @@ class InventoryService
     }
 
     /**
+     * Xác nhận đã dùng linh kiện (RESERVED → CONSUMED); idempotent, không cho dùng lượt đã trả.
+     *
+     * @param string $ref
+     * @return Reservation
+     * @throws BusinessException
+     */
+    public function consume(string $ref): Reservation
+    {
+        return DB::transaction(function () use ($ref) {
+            $reservation = $this->reservations->findByRefForUpdate($ref);
+            if (!$reservation) {
+                throw new BusinessException('Không tìm thấy lượt giữ linh kiện.', 'reservation_not_found', 404);
+            }
+            if ($reservation->status === ReservationStatus::CONSUMED->value) {
+                return $reservation;
+            }
+            if ($reservation->status === ReservationStatus::RELEASED->value) {
+                throw new BusinessException('Linh kiện đã được trả lại kho, không thể sử dụng.', 'already_released', 409);
+            }
+
+            $reservation->update(['status' => ReservationStatus::CONSUMED->value]);
+
+            return $reservation;
+        });
+    }
+
+    /**
      * Tra cứu lượt giữ linh kiện (dùng khi gọi reserve bị timeout, chưa rõ kết quả).
      *
      * @param string $ref

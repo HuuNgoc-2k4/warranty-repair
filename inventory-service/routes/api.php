@@ -9,4 +9,5 @@ Route::middleware(['service.key', 'simulate'])->group(function () {
     Route::post('/reservations', [ReservationController::class, 'store']);
     Route::get('/reservations/{ref}', [ReservationController::class, 'show']);
     Route::post('/reservations/{ref}/release', [ReservationController::class, 'release']);
+    Route::post('/reservations/{ref}/consume', [ReservationController::class, 'consume']);
 });
