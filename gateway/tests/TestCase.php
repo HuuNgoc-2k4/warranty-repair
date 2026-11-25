@@ -8,11 +8,17 @@ use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 abstract class TestCase extends BaseTestCase
 {
     /**
+     * @param string $role ADMIN | STAFF | TECHNICIAN
      * @return User
      */
-    protected function makeStaff(): User
+    protected function makeUser(string $role = 'STAFF'): User
     {
-        return User::query()->create(['name' => 'Nhân viên', 'email' => 'staff@wr.test', 'password' => 'password']);
+        return User::query()->create([
+            'name' => 'Người dùng '.$role,
+            'email' => strtolower($role).'@gmail.com',
+            'password' => 'password',
+            'role' => $role
+        ]);
     }
 
     /**

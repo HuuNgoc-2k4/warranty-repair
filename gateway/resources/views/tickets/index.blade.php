@@ -4,11 +4,15 @@
 @section('content')
     <div class="flex flex-wrap items-center gap-2 mb-4">
         <h1 class="text-xl font-semibold mr-auto">Phiếu tiếp nhận</h1>
-        <form method="POST" action="{{ route('tickets.reconcile') }}">
-            @csrf
-            <button class="px-3 min-h-11 rounded border border-gray-300 bg-white text-sm hover:bg-gray-100" title="Tra lại Inventory cho các phiếu đang xử lý">Đối soát phiếu chờ</button>
-        </form>
-        <a href="{{ route('tickets.create') }}" class="px-4 min-h-11 inline-flex items-center rounded bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700">Tạo phiếu</a>
+        @can('tickets.reconcile')
+            <form method="POST" action="{{ route('tickets.reconcile') }}">
+                @csrf
+                <button class="px-3 min-h-11 rounded border border-gray-300 bg-white text-sm hover:bg-gray-100" title="Tra lại Inventory cho các phiếu đang xử lý">Đối soát phiếu chờ</button>
+            </form>
+        @endcan
+        @can('tickets.create')
+            <a href="{{ route('tickets.create') }}" class="px-4 min-h-11 inline-flex items-center rounded bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700">Tạo phiếu</a>
+        @endcan
     </div>
 
     <form method="GET" class="mb-4">

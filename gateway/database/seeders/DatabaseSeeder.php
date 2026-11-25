@@ -2,23 +2,30 @@
 
 namespace Database\Seeders;
 
+use App\Enums\UserRole;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
 {
     /**
-     * Tài khoản nhân viên mẫu (mật khẩu: password).
+     * Tài khoản mẫu cho từng vai trò (mật khẩu: password).
      *
      * @return void
      */
     public function run(): void
     {
         foreach ([
-            ['name' => 'Nhân viên 1', 'email' => 'staff1@wr.test'],
-            ['name' => 'Nhân viên 2', 'email' => 'staff2@wr.test']
-        ] as $staff) {
-            User::query()->updateOrCreate(['email' => $staff['email']], ['name' => $staff['name'], 'password' => 'password']);
+            ['name' => 'Quản trị viên', 'email' => 'admin@gmail.com', 'role' => UserRole::ADMIN],
+            ['name' => 'Nhân viên tiếp nhận 1', 'email' => 'staff1@gmail.com', 'role' => UserRole::STAFF],
+            ['name' => 'Nhân viên tiếp nhận 2', 'email' => 'staff2@gmail.com', 'role' => UserRole::STAFF],
+            ['name' => 'Kỹ thuật viên', 'email' => 'technician1@gmail.com', 'role' => UserRole::TECHNICIAN]
+        ] as $user) {
+            User::query()->updateOrCreate(['email' => $user['email']], [
+                'name' => $user['name'],
+                'password' => 'password',
+                'role' => $user['role']->value
+            ]);
         }
     }
 }

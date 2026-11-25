@@ -14,12 +14,14 @@
             <a href="{{ route('tickets.index') }}" class="font-semibold text-indigo-700 py-2">Bảo hành &amp; sửa chữa</a>
             <nav class="flex gap-1 text-sm">
                 <a href="{{ route('tickets.index') }}" class="px-3 py-3 rounded hover:bg-gray-100">Phiếu</a>
-                <a href="{{ route('tickets.create') }}" class="px-3 py-3 rounded hover:bg-gray-100">Tạo phiếu</a>
+                @can('tickets.create')
+                    <a href="{{ route('tickets.create') }}" class="px-3 py-3 rounded hover:bg-gray-100">Tạo phiếu</a>
+                @endcan
                 <a href="{{ route('inventory.index') }}" class="px-3 py-3 rounded hover:bg-gray-100">Kho</a>
             </nav>
             <form method="POST" action="{{ route('logout') }}" class="ml-auto flex items-center gap-2 text-sm">
                 @csrf
-                <span class="text-gray-500 hidden sm:inline min-w-0 break-words">{{ auth()->user()->name }}</span>
+                <span class="text-gray-500 hidden sm:inline min-w-0 break-words">{{ auth()->user()->name }} ({{ \App\Enums\UserRole::tryFrom((string) auth()->user()->role)?->label() ?? auth()->user()->role }})</span>
                 <button class="px-3 min-h-11 rounded border border-gray-300 hover:bg-gray-100">Đăng xuất</button>
             </form>
         </div>

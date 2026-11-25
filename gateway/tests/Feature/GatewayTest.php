@@ -28,12 +28,12 @@ class GatewayTest extends TestCase
      */
     public function test_login_and_logout(): void
     {
-        $this->makeStaff();
+        $this->makeUser();
 
-        $this->post('/login', ['email' => 'staff@wr.test', 'password' => 'wrong'])->assertRedirect()->assertSessionHas('error');
+        $this->post('/login', ['email' => 'staff@gmail.com', 'password' => 'wrong'])->assertRedirect()->assertSessionHas('error');
         $this->assertGuest();
 
-        $this->post('/login', ['email' => 'staff@wr.test', 'password' => 'password'])->assertRedirect(route('tickets.index'));
+        $this->post('/login', ['email' => 'staff@gmail.com', 'password' => 'password'])->assertRedirect(route('tickets.index'));
         $this->assertAuthenticated();
 
         $this->post('/logout')->assertRedirect('/login');
@@ -55,7 +55,7 @@ class GatewayTest extends TestCase
     {
         Http::fake(['repair.test/*' => Http::response(['data' => [$this->ticketData()]])]);
 
-        $this->actingAs($this->makeStaff())->get('/tickets?status=RECEIVED')
+        $this->actingAs($this->makeUser())->get('/tickets?status=RECEIVED')
             ->assertOk()
             ->assertSee('Nguyễn Văn A')
             ->assertSee('Đã tiếp nhận');
@@ -70,7 +70,7 @@ class GatewayTest extends TestCase
     {
         Http::fake(fn () => throw new ConnectionException('down'));
 
-        $this->actingAs($this->makeStaff())->get('/tickets')->assertOk()->assertSee('Không kết nối được dịch vụ repair');
+        $this->actingAs($this->makeUser())->get('/tickets')->assertOk()->assertSee('Không kết nối được dịch vụ repair');
     }
 
     /**
@@ -83,7 +83,7 @@ class GatewayTest extends TestCase
             'inventory.test/*' => Http::response(['data' => [['id' => 1, 'name' => 'Màn hình', 'available' => 3]]])
         ]);
 
-        $this->actingAs($this->makeStaff())->get('/tickets/create')
+        $this->actingAs($this->makeUser())->get('/tickets/create')
             ->assertOk()
             ->assertSee('SN-OK - Laptop')
             ->assertSee('Màn hình (còn 3)')
@@ -97,7 +97,7 @@ class GatewayTest extends TestCase
     {
         Http::fake(['repair.test/*' => Http::response(['data' => $this->ticketData()], 201)]);
 
-        $this->actingAs($this->makeStaff())
+        $this->actingAs($this->makeUser())
             ->post('/tickets', $this->formData(['simulate' => 'slow']))
             ->assertRedirect(route('tickets.show', 7))
             ->assertSessionHas('success');
@@ -115,7 +115,7 @@ class GatewayTest extends TestCase
     {
         Http::fake(['repair.test/*' => Http::response(['message' => 'Chưa xác định được kết quả.', 'data' => $this->ticketData(['status' => 'PENDING'])], 202)]);
 
-        $this->actingAs($this->makeStaff())->post('/tickets', $this->formData())
+        $this->actingAs($this->makeUser())->post('/tickets', $this->formData())
             ->assertRedirect(route('tickets.show', 7))
             ->assertSessionHas('warning');
     }
@@ -127,7 +127,7 @@ class GatewayTest extends TestCase
     {
         Http::fake(['repair.test/*' => Http::response(['message' => 'Không đủ linh kiện trong kho.', 'error_code' => 'out_of_stock'], 409)]);
 
-        $this->actingAs($this->makeStaff())->from('/tickets/create')->post('/tickets', $this->formData())
+        $this->actingAs($this->makeUser())->from('/tickets/create')->post('/tickets', $this->formData())
             ->assertRedirect('/tickets/create')
             ->assertSessionHas('error', 'Không đủ linh kiện trong kho.')
             ->assertSessionHasInput('customer', 'Nguyễn Văn A')
@@ -141,7 +141,7 @@ class GatewayTest extends TestCase
     {
         Http::fake(fn () => throw new ConnectionException('timeout'));
 
-        $this->actingAs($this->makeStaff())->from('/tickets/create')->post('/tickets', $this->formData())
+        $this->actingAs($this->makeUser())->from('/tickets/create')->post('/tickets', $this->formData())
             ->assertSessionHasInput('idempotency_key', 'key-123')
             ->assertSessionHas('error');
     }
@@ -153,7 +153,7 @@ class GatewayTest extends TestCase
     {
         Http::fake();
 
-        $this->actingAs($this->makeStaff())->post('/tickets', $this->formData(['phone' => 'abc', 'simulate' => 'boom']))
+        $this->actingAs($this->makeUser())->post('/tickets', $this->formData(['phone' => 'abc', 'simulate' => 'boom']))
             ->assertSessionHasErrors(['phone', 'simulate']);
 
         Http::assertNothingSent();
@@ -168,7 +168,7 @@ class GatewayTest extends TestCase
         Http::fake(['repair.test/*' => function () use (&$status) {
             return Http::response(['data' => $this->ticketData(['status' => $status])]);
         }]);
-        $this->actingAs($this->makeStaff());
+        $this->actingAs($this->makeUser('ADMIN'));
 
         $this->get('/tickets/7')->assertOk()->assertSee('Bắt đầu sửa')->assertSee('Hủy phiếu');
 
@@ -186,7 +186,7 @@ class GatewayTest extends TestCase
     {
         Http::fake(['repair.test/*' => Http::response(['message' => 'Không tìm thấy phiếu.', 'error_code' => 'ticket_not_found'], 404)]);
 
-        $this->actingAs($this->makeStaff())->get('/tickets/99')->assertRedirect(route('tickets.index'))->assertSessionHas('error', 'Không tìm thấy phiếu.');
+        $this->actingAs($this->makeUser())->get('/tickets/99')->assertRedirect(route('tickets.index'))->assertSessionHas('error', 'Không tìm thấy phiếu.');
     }
 
     /**
@@ -196,7 +196,7 @@ class GatewayTest extends TestCase
     {
         Http::fake(['repair.test/*' => Http::response(['data' => $this->ticketData()])]);
 
-        $this->actingAs($this->makeStaff())->from('/tickets/7')->post('/tickets/7/status', ['status' => 'REPAIRING'])
+        $this->actingAs($this->makeUser('ADMIN'))->from('/tickets/7')->post('/tickets/7/status', ['status' => 'REPAIRING'])
             ->assertRedirect('/tickets/7')->assertSessionHas('success');
         $this->post('/tickets/7/cancel')->assertSessionHas('success');
         $this->post('/tickets/7/status', ['status' => 'NOPE'])->assertSessionHas('error');
@@ -212,7 +212,7 @@ class GatewayTest extends TestCase
     {
         Http::fake(['repair.test/*' => Http::response(['message' => 'Phiếu đã vào quy trình sửa chữa.', 'error_code' => 'cancel_not_allowed'], 409)]);
 
-        $this->actingAs($this->makeStaff())->post('/tickets/7/cancel')->assertSessionHas('error', 'Phiếu đã vào quy trình sửa chữa.');
+        $this->actingAs($this->makeUser('ADMIN'))->post('/tickets/7/cancel')->assertSessionHas('error', 'Phiếu đã vào quy trình sửa chữa.');
     }
 
     /**
@@ -222,7 +222,7 @@ class GatewayTest extends TestCase
     {
         Http::fake(['repair.test/*' => Http::response(['data' => ['checked' => 2, 'received' => 1, 'failed' => 1, 'pending' => 0]])]);
 
-        $this->actingAs($this->makeStaff())->post('/tickets/reconcile')
+        $this->actingAs($this->makeUser('ADMIN'))->post('/tickets/reconcile')
             ->assertSessionHas('success', 'Đã đối soát 2 phiếu: 1 tiếp nhận, 1 thất bại, 0 vẫn chờ.');
 
         Http::assertSent(fn (Request $request) => $request['older_than'] === 0);
@@ -235,6 +235,6 @@ class GatewayTest extends TestCase
     {
         Http::fake(['inventory.test/*' => Http::response(['data' => [['id' => 4, 'name' => 'Camera', 'available' => 0]]])]);
 
-        $this->actingAs($this->makeStaff())->get('/inventory')->assertOk()->assertSee('Camera');
+        $this->actingAs($this->makeUser())->get('/inventory')->assertOk()->assertSee('Camera');
     }
 }

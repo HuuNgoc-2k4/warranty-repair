@@ -1,4 +1,11 @@
-@php use App\Enums\TicketStatus; $state = TicketStatus::tryFrom($ticket['status']); $next = $state?->next(); @endphp
+@php
+    use App\Enums\TicketStatus;
+    $state = TicketStatus::tryFrom($ticket['status']);
+    $canStatus = $state?->next() && auth()->user()->can('tickets.status');
+    $next = $canStatus ? $state->next() : null;
+    $canCancel = $ticket['status'] === 'RECEIVED' && auth()->user()->can('tickets.cancel');
+    $canReconcile = $ticket['status'] === 'PENDING' && auth()->user()->can('tickets.reconcile');
+@endphp
 @extends('layouts.app')
 @section('title', 'Phiếu #'.$ticket['id'])
 @section('content')
@@ -22,10 +29,10 @@
         </dl>
     </div>
 
-    @if ($next || $ticket['status'] === 'RECEIVED' || $ticket['status'] === 'PENDING')
+    @if ($next || $canCancel || $canReconcile)
         <div class="bg-white rounded-lg shadow p-4 sm:p-5 mb-4 space-y-3">
             <h2 class="font-semibold">Thao tác</h2>
-            @if ($ticket['status'] === 'PENDING')
+            @if ($canReconcile)
                 <p class="text-sm text-amber-800">Chưa rõ kho đã giữ linh kiện hay chưa. Bấm đối soát để tra lại.</p>
                 <form method="POST" action="{{ route('tickets.reconcile') }}">
                     @csrf
@@ -41,7 +48,7 @@
                             <button class="mt-3 w-full sm:w-auto px-4 min-h-11 rounded bg-indigo-600 text-white hover:bg-indigo-700">{{ $next['label'] }}</button>
                         </form>
                     @endif
-                    @if ($ticket['status'] === 'RECEIVED')
+                    @if ($canCancel)
                         <form method="POST" action="{{ route('tickets.cancel', $ticket['id']) }}" class="sm:flex-1" onsubmit="return confirm('Hủy phiếu và trả linh kiện về kho?')">
                             @csrf
                             @include('tickets.partials.simulate', ['suffix' => 'cancel'])
