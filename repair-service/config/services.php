@@ -14,6 +14,12 @@ return [
     |
     */
 
+    'service_key' => env('SERVICE_KEY'),
+
+    'warranty_url' => env('WARRANTY_URL'),
+
+    'inventory_url' => env('INVENTORY_URL'),
+
     'postmark' => [
         'key' => env('POSTMARK_API_KEY'),
     ],

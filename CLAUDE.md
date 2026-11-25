@@ -73,10 +73,10 @@ Luồng: **Controller → Validator → Service → Repository → Model**.
 
 # Test
 
-- **Chỉ kiểm tra bằng code**: Pest feature test, `curl`/script gọi API, Postman collection. KHÔNG mở trình duyệt để test giao diện (không dùng Browser pane, Chrome, screenshot, `resize_window`). Người dùng tự test giao diện rồi feedback, Claude sửa theo feedback đó.
+- **Chỉ kiểm tra bằng code**: PHPUnit feature test (`php artisan test`; chưa cài Pest), `curl`/script gọi API (`scripts/`), Postman collection. KHÔNG mở trình duyệt để test giao diện (không dùng Browser pane, Chrome, screenshot, `resize_window`). Người dùng tự test giao diện rồi feedback, Claude sửa theo feedback đó.
 - Test là sản phẩm nộp bài: thư mục `tests/` của từng app NẰM trong git.
-- Dùng `RefreshDatabase` để schema đến từ migration thật, KHÔNG `Schema::create()` trong test. Chạy test trên schema riêng (`wr_*_test`), KHÔNG chạy trên schema dev vì `RefreshDatabase` drop toàn bộ bảng.
-- Không viết factory cho model nghiệp vụ; dựng dữ liệu bằng helper (`makePart()`, `makeTicket()`...) trong `tests/Pest.php` hoặc `Model::create`.
+- Dùng `RefreshDatabase` để schema đến từ migration thật, KHÔNG `Schema::create()` trong test. Test chạy trên SQLite in-memory (cấu hình sẵn trong `phpunit.xml`), KHÔNG trỏ test vào schema MySQL dev vì `RefreshDatabase` drop toàn bộ bảng. Hành vi chỉ có ở MySQL (khóa dòng, tranh chấp đồng thời) kiểm bằng `scripts/`.
+- Không viết factory cho model nghiệp vụ; dựng dữ liệu bằng helper (`makePart()`, `makeTicket()`...) trong `tests/TestCase.php` hoặc `Model::create`. Gọi dịch vụ khác trong test dùng `Http::fake()`, không gọi mạng thật.
 - Chạy test tuần tự, không song song trên cùng một DB. Chạy test hẹp nhất bao phủ thay đổi (`php artisan test --compact --filter=...`).
 - Không claim "đã pass / đã xong" khi chưa có output thật của lệnh kiểm tra trong lượt đó.
 
