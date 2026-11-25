@@ -70,4 +70,24 @@ echo "11. Đối soát"
 call POST "$REPAIR/tickets/reconcile" '{"older_than":0}'; check "200" "$CODE" 200
 check "không còn PENDING" "$(jget data.pending)" 0
 
+echo "12. Gateway: đăng nhập session và đi qua giao diện (không dùng trình duyệt)"
+GATEWAY="${GATEWAY_URL:-http://127.0.0.1:8000}"
+JAR=$(mktemp)
+trap 'rm -f "$JAR"' EXIT
+token() { curl -s -b "$JAR" -c "$JAR" "$GATEWAY$1" | sed -n 's/.*name="_token" value="\([^"]*\)".*/\1/p' | head -1; }
+status_of() { curl -s -o /dev/null -w '%{http_code}' -b "$JAR" -c "$JAR" "$@"; }
+check "chưa đăng nhập bị chuyển hướng" "$(status_of "$GATEWAY/tickets")" 302
+check "sai mật khẩu bị từ chối" "$(curl -s -o /dev/null -w '%{redirect_url}' -b "$JAR" -c "$JAR" -d "_token=$(token /login)" -d 'email=staff1@wr.test' -d 'password=sai' "$GATEWAY/login")" "$GATEWAY/login"
+check "đăng nhập đúng" "$(curl -s -o /dev/null -w '%{redirect_url}' -b "$JAR" -c "$JAR" -d "_token=$(token /login)" -d 'email=staff1@wr.test' -d 'password=password' "$GATEWAY/login")" "$GATEWAY/tickets"
+check "danh sách phiếu 200" "$(status_of "$GATEWAY/tickets")" 200
+check "trang kho 200" "$(status_of "$GATEWAY/inventory")" 200
+CREATE_TOKEN=$(token /tickets/create)
+KEY="ui-$RUN"
+SUBMIT=(-d "_token=$CREATE_TOKEN" -d "idempotency_key=$KEY" -d 'serial=SN-LAP-001' -d 'customer=Tran Thi B' -d 'phone=0912345678' -d 'issue=Khong len nguon' -d 'part_id=2' -d 'qty=1')
+LOCATION=$(curl -s -o /dev/null -w '%{redirect_url}' -b "$JAR" -c "$JAR" "${SUBMIT[@]}" "$GATEWAY/tickets")
+check "tạo phiếu qua UI chuyển tới trang chi tiết" "$(echo "$LOCATION" | grep -cE '/tickets/[0-9]+$')" 1
+LOCATION2=$(curl -s -o /dev/null -w '%{redirect_url}' -b "$JAR" -c "$JAR" "${SUBMIT[@]}" "$GATEWAY/tickets")
+check "gửi lại form (cùng key) về cùng phiếu" "$LOCATION2" "$LOCATION"
+check "trang chi tiết 200" "$(status_of "$LOCATION")" 200
+
 finish
