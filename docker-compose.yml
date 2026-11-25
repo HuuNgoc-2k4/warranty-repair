@@ -1,0 +1,82 @@
+# Chạy: docker compose up --build   (gateway http://localhost:8000)
+# Biến trong environment ghi đè .env của từng app, nên .env local (127.0.0.1) không ảnh hưởng container.
+# Dùng chung một image PHP; mã nguồn mỗi app được mount vào /app.
+
+x-php: &php
+  build:
+    context: .
+    dockerfile: docker/php/Dockerfile
+  image: warranty-repair-php
+  user: "${UID:-1000}:${GID:-1000}"
+  depends_on:
+    mysql:
+      condition: service_healthy
+
+x-env: &env
+  HOME: /tmp
+  PHP_CLI_SERVER_WORKERS: "8"
+  DB_HOST: mysql
+  DB_PORT: "3306"
+  DB_USERNAME: wr
+  DB_PASSWORD: wr_dev
+  SERVICE_KEY: wr-dev-key
+
+services:
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./docker/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-proot"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  gateway:
+    <<: *php
+    ports: ["8000:8000"]
+    volumes: ["./gateway:/app"]
+    environment:
+      <<: *env
+      PORT: "8000"
+      DB_DATABASE: wr_gateway
+      WARRANTY_URL: http://warranty-service:8001
+      REPAIR_URL: http://repair-service:8002
+      INVENTORY_URL: http://inventory-service:8003
+
+  warranty-service:
+    <<: *php
+    ports: ["8001:8001"]
+    volumes: ["./warranty-service:/app"]
+    environment:
+      <<: *env
+      PORT: "8001"
+      DB_DATABASE: wr_warranty
+
+  repair-service:
+    <<: *php
+    ports: ["8002:8002"]
+    volumes: ["./repair-service:/app"]
+    environment:
+      <<: *env
+      PORT: "8002"
+      DB_DATABASE: wr_repair
+      WARRANTY_URL: http://warranty-service:8001
+      INVENTORY_URL: http://inventory-service:8003
+
+  inventory-service:
+    <<: *php
+    ports: ["8003:8003"]
+    volumes: ["./inventory-service:/app"]
+    environment:
+      <<: *env
+      PORT: "8003"
+      DB_DATABASE: wr_inventory
+      APP_SIMULATE: "true"
+      SEED: "1"
+
+volumes:
+  mysql-data:
