@@ -25,6 +25,9 @@
         <env name="CACHE_STORE" value="array"/>
         <env name="DB_CONNECTION" value="sqlite"/>
         <env name="DB_DATABASE" value=":memory:"/>
+        <env name="SERVICE_KEY" value="test-key"/>
+        <env name="WARRANTY_URL" value="http://warranty.test"/>
+        <env name="INVENTORY_URL" value="http://inventory.test"/>
         <env name="DB_URL" value=""/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
