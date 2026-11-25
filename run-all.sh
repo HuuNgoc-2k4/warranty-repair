@@ -7,7 +7,7 @@ export PHP_CLI_SERVER_WORKERS=${PHP_CLI_SERVER_WORKERS:-8}
 mkdir -p logs
 for entry in gateway:8000 warranty-service:8001 repair-service:8002 inventory-service:8003; do
   app=${entry%%:*}; port=${entry##*:}
-  (cd "$app" && php artisan serve --host=127.0.0.1 --port="$port" >"../logs/$app.log" 2>&1) &
+  (cd "$app" && php artisan serve --no-reload --host=127.0.0.1 --port="$port" >"../logs/$app.log" 2>&1) &
   echo "$app -> http://127.0.0.1:$port"
 done
 

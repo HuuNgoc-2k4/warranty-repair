@@ -19,7 +19,7 @@ Chạy cả hệ thống: `./run-all.sh` (local) hoặc `docker compose up --bui
 - Mọi thao tác ghi liên dịch vụ phải idempotent (`Idempotency-Key` ở Repair, `ref` UNIQUE ở Inventory) để gửi lại không tạo trùng.
 - Timeout KHÔNG có nghĩa là thao tác thất bại: tra lại kết quả (vd `GET /reservations/{ref}`) trước khi quyết định gửi lại, hủy hay bù trừ. Gọi liên dịch vụ dùng `Http::timeout()` và không retry thao tác ghi trừ khi nó idempotent.
 - Đổi hợp đồng API (đường dẫn, field, mã lỗi) thì cập nhật luôn bộ yêu cầu API trong `postman/` và tài liệu trong `docs/`.
-- `artisan serve` mặc định đơn luồng và sẽ treo khi các dịch vụ gọi chéo nhau; luôn chạy với `PHP_CLI_SERVER_WORKERS` (đã có trong `run-all.sh` và Docker).
+- `artisan serve` mặc định đơn luồng và sẽ treo khi các dịch vụ gọi chéo nhau hoặc khi Inventory mô phỏng chậm; luôn chạy với `PHP_CLI_SERVER_WORKERS` kèm cờ `--no-reload` (đã có trong `run-all.sh`; Docker dùng `php -S`).
 
 # Giao diện (gateway)
 
