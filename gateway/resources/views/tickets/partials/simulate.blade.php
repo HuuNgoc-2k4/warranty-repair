@@ -1,7 +1,7 @@
 {{-- Chọn lỗi giả lập cho Inventory (chỉ có tác dụng khi Inventory chạy với APP_SIMULATE=true) --}}
 <div>
-    <label class="block text-sm mb-1 text-gray-600" for="simulate-{{ $suffix ?? 'form' }}">Giả lập lỗi kho (chỉ để demo)</label>
-    <select id="simulate-{{ $suffix ?? 'form' }}" name="simulate" class="w-full min-h-11 rounded border border-gray-300 bg-white px-3 text-sm">
+    <label for="simulate-{{ $suffix ?? 'form' }}">Giả lập lỗi kho (chỉ để demo)</label>
+    <select id="simulate-{{ $suffix ?? 'form' }}" name="simulate">
         <option value="">Không</option>
         <option value="fail" @selected(old('simulate') === 'fail')>fail - kho trả lỗi ngay</option>
         <option value="slow" @selected(old('simulate') === 'slow')>slow - kho chậm hơn timeout</option>

@@ -1,49 +1,40 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="vi">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>@yield('title', 'Bảo hành & sửa chữa')</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>@hasSection('title')@yield('title') · @endif Bảo hành &amp; sửa chữa</title>
+    <link rel="stylesheet" href="{{ asset('antam/workspace.css') }}">
 </head>
-<body class="bg-gray-50 text-gray-900 min-h-screen">
-@auth
-    <header class="bg-white border-b border-gray-200">
-        <div class="max-w-5xl mx-auto px-4 py-2 flex flex-wrap items-center gap-x-4 gap-y-1">
-            <a href="{{ route('tickets.index') }}" class="font-semibold text-indigo-700 py-2">Bảo hành &amp; sửa chữa</a>
-            <nav class="flex gap-1 text-sm">
-                <a href="{{ route('tickets.index') }}" class="px-3 py-3 rounded hover:bg-gray-100">Phiếu</a>
-                @can('tickets.create')
-                    <a href="{{ route('tickets.create') }}" class="px-3 py-3 rounded hover:bg-gray-100">Tạo phiếu</a>
-                @endcan
-                <a href="{{ route('inventory.index') }}" class="px-3 py-3 rounded hover:bg-gray-100">Kho</a>
-            </nav>
-            <form method="POST" action="{{ route('logout') }}" class="ml-auto flex items-center gap-2 text-sm">
-                @csrf
-                <span class="text-gray-500 hidden sm:inline min-w-0 break-words">{{ auth()->user()->name }} ({{ \App\Enums\UserRole::tryFrom((string) auth()->user()->role)?->label() ?? auth()->user()->role }})</span>
-                <button class="px-3 min-h-11 rounded border border-gray-300 hover:bg-gray-100">Đăng xuất</button>
-            </form>
-        </div>
-    </header>
-@endauth
-
-<main class="max-w-5xl mx-auto px-4 py-4 sm:py-6">
-    @foreach (['success' => 'emerald', 'warning' => 'amber', 'error' => 'red'] as $type => $color)
+<body>
+<a class="skip" href="#content">Đến nội dung chính</a>
+<header><div class="shell topbar">
+    <a class="brand" href="{{ route('home') }}"><span class="mark"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.7 20 6v5.4c0 4.6-3.2 7.9-8 10-4.8-2.1-8-5.4-8-10V6z"/><path d="m8.6 11.8 2.3 2.3 4.5-4.7"/></svg></span>Bảo hành <b>&amp; sửa chữa</b></a>
+    @auth
+        <nav aria-label="Điều hướng nhân viên">
+            <a href="{{ route('tickets.index') }}" @if(request()->routeIs('tickets.index','tickets.show')) aria-current="page" @endif>Quản lý phiếu</a>
+            @can('tickets.create')<a href="{{ route('tickets.create') }}" @if(request()->routeIs('tickets.create')) aria-current="page" @endif>Tạo phiếu</a>@endcan
+            <a href="{{ route('inventory.index') }}" @if(request()->routeIs('inventory.index')) aria-current="page" @endif>Kho linh kiện</a>
+        </nav>
+        <form class="account" method="POST" action="{{ route('logout') }}">
+            @csrf
+            <span>{{ auth()->user()->name }}<small>{{ \App\Enums\UserRole::tryFrom((string) auth()->user()->role)?->label() ?? auth()->user()->role }}</small></span>
+            <button>Đăng xuất</button>
+        </form>
+    @endauth
+</div></header>
+<main id="content" class="shell">
+    @foreach (['success', 'warning', 'error'] as $type)
         @if (session($type))
-            <div class="mb-4 rounded border border-{{ $color }}-300 bg-{{ $color }}-50 text-{{ $color }}-800 px-4 py-3 break-words">{{ session($type) }}</div>
+            <div class="notice {{ $type }}" role="status">{{ session($type) }}</div>
         @endif
     @endforeach
     @if ($errors->any())
-        <div class="mb-4 rounded border border-red-300 bg-red-50 text-red-800 px-4 py-3">
-            <ul class="list-disc pl-5">
-                @foreach ($errors->all() as $message)
-                    <li class="break-words">{{ $message }}</li>
-                @endforeach
-            </ul>
-        </div>
+        <div class="notice error" role="alert"><ul>
+            @foreach ($errors->all() as $message)<li>{{ $message }}</li>@endforeach
+        </ul></div>
     @endif
-
     @yield('content')
 </main>
 @stack('scripts')

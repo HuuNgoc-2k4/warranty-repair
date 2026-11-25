@@ -2,53 +2,67 @@
 @extends('layouts.app')
 @section('title', 'Danh sách phiếu')
 @section('content')
-    <div class="flex flex-wrap items-center gap-2 mb-4">
-        <h1 class="text-xl font-semibold mr-auto">Phiếu tiếp nhận</h1>
+    <section class="ticket-hero">
+        <div><h1>Phiếu tiếp nhận</h1>
+        <p>Theo dõi thiết bị từ lúc tiếp nhận đến khi bàn giao.</p>
+        <div class="actions">
         @can('tickets.reconcile')
             <form method="POST" action="{{ route('tickets.reconcile') }}">
                 @csrf
-                <button class="px-3 min-h-11 rounded border border-gray-300 bg-white text-sm hover:bg-gray-100" title="Tra lại Inventory cho các phiếu đang xử lý">Đối soát phiếu chờ</button>
+                <button  title="Tra lại Inventory cho các phiếu đang xử lý">Đối soát phiếu chờ</button>
             </form>
         @endcan
         @can('tickets.create')
-            <a href="{{ route('tickets.create') }}" class="px-4 min-h-11 inline-flex items-center rounded bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700">Tạo phiếu</a>
+            <a href="{{ route('tickets.create') }}" class="btn primary"><span aria-hidden="true">＋</span> Tạo phiếu</a>
         @endcan
-    </div>
+        </div></div>
+        <img src="{{ asset('antam/laptop.webp') }}" alt="" width="1060" height="795">
+    </section>
 
-    <form method="GET" class="mb-4">
-        <select name="status" onchange="this.form.submit()" class="min-h-11 w-full sm:w-60 rounded border border-gray-300 bg-white px-3">
+    <section class="panel listing">
+    <div class="list-head"><h2>Danh sách phiếu</h2>
+    <form method="GET" class="filter">
+        <label for="status">Trạng thái</label>
+        <select id="status" name="status" onchange="this.form.submit()">
             <option value="">Tất cả trạng thái</option>
             @foreach (TicketStatus::cases() as $case)
                 <option value="{{ $case->value }}" @selected($status === $case->value)>{{ $case->label() }}</option>
             @endforeach
         </select>
-    </form>
+    </form></div>
 
-    <div class="overflow-x-auto bg-white rounded-lg shadow">
-        <table class="min-w-full text-sm">
-            <thead class="bg-gray-100 text-left text-gray-600">
+    <div class="table-scroll">
+        <table>
+            <thead>
             <tr>
-                <th class="px-3 py-2">#</th>
-                <th class="px-3 py-2">Serial</th>
-                <th class="px-3 py-2">Khách hàng</th>
-                <th class="px-3 py-2">Bảo hành</th>
-                <th class="px-3 py-2">Trạng thái</th>
+                <th>Mã phiếu</th>
+                <th>Số sê-ri</th>
+                <th>Khách hàng</th>
+                <th>Bảo hành</th>
+                <th>Trạng thái</th>
             </tr>
             </thead>
             <tbody>
-            @forelse ($tickets as $ticket)
+            @foreach ($tickets as $ticket)
                 @php $state = TicketStatus::tryFrom($ticket['status']); @endphp
-                <tr class="border-t border-gray-100">
-                    <td class="px-3 py-2"><a class="text-indigo-700 underline inline-block min-h-11 leading-[2.75rem]" href="{{ route('tickets.show', $ticket['id']) }}">#{{ $ticket['id'] }}</a></td>
-                    <td class="px-3 py-2 break-words">{{ $ticket['serial'] }}</td>
-                    <td class="px-3 py-2 break-words">{{ $ticket['customer'] }}</td>
-                    <td class="px-3 py-2">{{ $ticket['in_warranty'] ? 'Còn' : 'Hết' }}</td>
-                    <td class="px-3 py-2"><span class="px-2 py-1 rounded text-xs {{ $state?->badge() }}">{{ $state?->label() ?? $ticket['status'] }}</span></td>
+                <tr>
+                    <td><a href="{{ route('tickets.show', $ticket['id']) }}">#{{ $ticket['id'] }}</a></td>
+                    <td>{{ $ticket['serial'] }}</td>
+                    <td>{{ $ticket['customer'] }}</td>
+                    <td>{{ $ticket['in_warranty'] ? 'Còn' : 'Hết' }}</td>
+                    <td><span class="badge {{ $state?->badge() }}">{{ $state?->label() ?? $ticket['status'] }}</span></td>
                 </tr>
-            @empty
-                <tr><td colspan="5" class="px-3 py-6 text-center text-gray-500">Chưa có phiếu nào.</td></tr>
-            @endforelse
+            @endforeach
             </tbody>
         </table>
     </div>
+    @if (empty($tickets))
+        <div class="empty">
+            <svg aria-hidden="true" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><rect x="11" y="9" width="26" height="33" rx="5"/><rect x="18" y="6" width="12" height="7" rx="3" fill="#fff0d9"/><path d="M18 22h12m-12 7h8"/></svg>
+            @if(session('error'))<h3>Chưa tải được danh sách phiếu</h3>
+            @elseif($status)<h3>Không có phiếu ở trạng thái này</h3><a href="{{ route('tickets.index') }}">Xem tất cả phiếu</a>
+            @else<h3>Chưa có phiếu nào.</h3><p>Phiếu bảo hành sẽ xuất hiện tại đây khi thiết bị được tiếp nhận.</p>@endif
+        </div>
+    @endif
+    </section>
 @endsection
