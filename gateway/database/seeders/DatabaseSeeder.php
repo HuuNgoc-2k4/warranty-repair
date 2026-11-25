@@ -3,23 +3,22 @@
 namespace Database\Seeders;
 
 use App\Models\User;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
 {
-    use WithoutModelEvents;
-
     /**
-     * Seed the application's database.
+     * Tài khoản nhân viên mẫu (mật khẩu: password).
+     *
+     * @return void
      */
     public function run(): void
     {
-        // User::factory(10)->create();
-
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-        ]);
+        foreach ([
+            ['name' => 'Nhân viên 1', 'email' => 'staff1@wr.test'],
+            ['name' => 'Nhân viên 2', 'email' => 'staff2@wr.test']
+        ] as $staff) {
+            User::query()->updateOrCreate(['email' => $staff['email']], ['name' => $staff['name'], 'password' => 'password']);
+        }
     }
 }
